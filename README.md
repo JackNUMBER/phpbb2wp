@@ -3,6 +3,7 @@ phpbb2wp is a free admin tool to migrate phpBB forum to Wordpress system. Create
 
 ## Getting Started
 To use this tool follow these steps:
+
 1. Don't be a hero and backup your database ;)
 2. Install Wordpress on your phpBB server.
 3. Download and edit the file with your db login.
@@ -11,6 +12,7 @@ To use this tool follow these steps:
 
 ## TODO
 Here our next improvements:
+
 - Create UI
 - Use PDO interface
 - Check phpBB database
