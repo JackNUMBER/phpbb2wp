@@ -199,7 +199,6 @@ $sql = ' SELECT
 				 	 phpbb_posts.post_id = phpbb_posts_text.post_id
 				 	 AND phpbb_posts.poster_id = 2
 				 ORDER BY phpbb_posts.post_time ASC
-				 LIMIT 10
 				';
 
 $result = mysql_query($sql);
@@ -252,11 +251,11 @@ while($post_phpbb = mysql_fetch_assoc($result)){
 	$article_wp[$cpt_article]['post_type'] = 'post';
 
 	/* Create Wordpress posts */
-	/*if(wp_insert_post($article_wp[$cpt_article])){
+	if(wp_insert_post($article_wp[$cpt_article])){
 		$converted++;
 	}else{
 		echo '<p class="warning">Error on writing the WP database</p>';
-	}*/
+	}
 	$cpt_article++;
 }
 
