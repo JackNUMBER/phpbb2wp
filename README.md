@@ -13,17 +13,18 @@ To use this tool follow these steps:
 ## TODO
 Here our next improvements:
 
-- Create UI
+- Create GUI
 - Use PDO interface
-- Check phpBB database
++ Check phpBB database
 - Check phpBB install
-- Check Wordpress database
++ Check Wordpress database
 - Check Wordpress install
+- Add custom prefix parameter
 - Add comments keep/kill option
 - Add old database keep/kill option
-- Add domain new/old option
-- Add BBcode manager (from bbcode table ?)
-- Add link manager //replace with new post id
+- Add old database backup option
+- Add BBcode manager (from bbcode table)
+- Add link manager (list old/new post url)
 - Add smiley killer (from smileys table)
-- Add image manager system //simple field with new url? 
 - Add category manager
+? Add pictures manager

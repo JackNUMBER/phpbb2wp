@@ -2,30 +2,15 @@
 /*
  * PHPBB2WP
  * Migrate phpBB forum to WP blog
- * Version 0.1 - No UI
+ * Version 0.2 - No UI
  * By Colin Braly (@_awk) & Antoine Cadoret (@JackNUMBER)
  *
  * HOW TO:
- * 1. Install Wordpress on your phpBB server.
- * 2. Put the file into the root folder.
- * 3. Run it. 
- *
- * TODO:
- * - Clean scripts comments & translate
- * - Create UI
- * - Use PDO interface
- * - Check phpBB database
- * - Check phpBB install
- * - Check Wordpress database
- * - Check Wordpress install
- * - Add comments keep/kill option
- * - Add old database keep/kill option
- * - Add domain new/old option
- * - Add BBcode manager (from bbcode table ?)
- * - Add link manager //replace with new post id
- * - Add smiley killer (from smileys table)
- * - Add image manager system //simple field with new url? 
- * - Add category manager
+ * 1. Don't be a hero and backup your database ;)
+ * 2. Install Wordpress on your phpBB server.
+ * 3. Download and edit the file with your db login.
+ * 4. Put the file into the root folder.
+ * 5. Run it.
  *
  */
 ?>
@@ -38,29 +23,51 @@
 </style>
 
 <?php
-/* Database connection */
-$mysql_host = 'localhost';
-$mysql_user = 'root';
-$mysql_pwd  = '';
-$mysql_db 	= 'phpbb2wp';
 
-$db_connect = mysql_connect($mysql_host, $mysql_user, $mysql_pwd)
-    or die('<p class="msg warning">Database connection failed: '.mysql_error().'</p>');
+$mysql_host = 'localhost';	// Edit with your db adress
+$mysql_db 	= 'phpbb2wp';		// Edit with your db name
+$mysql_user = 'root';				// Edit with your db username
+$mysql_pwd  = '';						// Edit with your db user password
+
+$wpPrefix		= 'wp_';				//Edit with your WP table prefix
+$phpbbPrefix= 'phpbb_';			//Edit with your WP table prefix
+
+/* Database connection */
+if(($db_connect = @mysql_connect($mysql_host, $mysql_user, $mysql_pwd)) && (mysql_select_db($mysql_db))){
+	echo '<p class="success">Database connection successful</p>';
+}else{
+	die('<p class="msg warning">Database connection failed: '.mysql_error().'</p>');
+}
 mysql_query("SET NAMES 'utf8'", $db_connect);
 
-echo '<p class="success">Database connection successful</p>';
-
-mysql_select_db($mysql_db);
 
 /* ==================== Global Functions ==================== */
 
+function testTableExists($table, $db){
+	$query = 'SHOW TABLES FROM '.$db.' LIKE \''.$table.'\'';
+	$exec = mysql_query($query);
+	return mysql_num_rows($exec);
+}
+
+function testTables(){
+	global $mysql_db, $phpbbPrefix, $wpPrefix;
+	if(!testTableExists($phpbbPrefix.'posts', $mysql_db)){
+		echo '<p class="warning">The phpBB database seems not available ('.$phpbbPrefix.'posts)';
+		exit;
+	}
+	if(!testTableExists($wpPrefix.'posts', $mysql_db)){
+		echo '<p class="warning">The Wordpress database seems not available ('.$wpPrefix.'posts)';
+		exit;
+	}
+}
+
 /* BBcode URL tag standardization */
-function cleanURL($str) {
-	while (preg_match('#\[url\]http://(.*?)\[/url\]#', $str, $matches)) {
+function cleanURL($str){
+	while (preg_match('#\[url\]http://(.*?)\[/url\]#', $str, $matches)){
 		$tag = str_replace('[url]','[url=http://'.$matches[1].']', $matches[0]);
 		$str = str_replace($matches[0], $tag, $str);
 	}
-	while (preg_match('#\[url\]www.(.*?)\[/url\]#', $str, $matches)) {
+	while (preg_match('#\[url\]www.(.*?)\[/url\]#', $str, $matches)){
 		$tag = str_replace('[url]','[url=http://www.'.$matches[1].']', $matches[0]);
 		$str = str_replace($matches[0], $tag, $str);
 	}
@@ -68,7 +75,7 @@ function cleanURL($str) {
 }
 
 /* List BBcode */
-function bbcode2html($str, $uid = '') {
+function bbcode2Html($str, $uid = ''){
   $bbcode = array(
                 "[list$uid]", "[*$uid]", "[/list$uid]", 
                 "[list=1$uid]", "[/list:o$uid]", 
@@ -109,7 +116,7 @@ function bbcode2html($str, $uid = '') {
 }
 
 /* Convert BBcode to HTML */
-function bbcode2html2($str, $uid) {
+function bbcode2Html2($str, $uid){
   $bbcode = array(
                 '"'.$uid.']',
                 '"]',
@@ -127,7 +134,7 @@ function bbcode2html2($str, $uid) {
 }
 
 /* List smilies */
-function killSmileys($str) {
+function killSmileys($str){
 	$smileys = array (
 								/* Don't kill them 
 								":D",
@@ -152,8 +159,8 @@ function killSmileys($str) {
 	$newstr = str_replace($smileys, '', $str);
 	return $newstr;
 }
-function cleanCrochet($str) {
-	while (preg_match('#\[(.*?)">#', $str, $matches)) {
+function cleanBracket($str){
+	while (preg_match('#\[(.*?)">#', $str, $matches)){
 		$tag = str_replace('">',']', $matches[0]);
 		$str = str_replace($matches[0], $tag, $str);
 	}
@@ -163,6 +170,17 @@ function cleanCrochet($str) {
 /* ================================================== */
 
 /* ==================== Process ==================== */
+
+/* Tests */
+testTables();
+
+define('WP_USE_THEMES', false);
+if(file_exists('./wp-blog-header.php')){
+	require('./wp-blog-header.php');
+}else{
+	echo '<p class="msg warning">Wordpress seems not installed</p>';
+	exit;
+}
 
 /* Posts reading */
 $sql = ' SELECT 
@@ -186,19 +204,11 @@ $sql = ' SELECT
 
 $result = mysql_query($sql);
 
-if (!$result) {
+if($result){
+	echo '<p>Posts reading...</p>';
+}else{
 	$message  = '<p class="msg warning">Invalid Request: '.mysql_error()."</p>";
 	die($message);
-}
-
-echo '<p>Posts reading...</p>';
-
-define('WP_USE_THEMES', false);
-if(file_exists('./wp-blog-header.php')){
-	require('./wp-blog-header.php');
-}else{
-	echo '<p class="msg warning">Wordpress isn\'t installed</p>';
-	break;
 }
 
 
@@ -207,8 +217,8 @@ $topic_done = array();
 $cpt_article = 0;
 $converted = 0;
 
-while ($post_phpbb = mysql_fetch_assoc($result)) {
-	if (in_array($post_phpbb['topic_id'], $topic_done)) {
+while($post_phpbb = mysql_fetch_assoc($result)){
+	if(in_array($post_phpbb['topic_id'], $topic_done)){
 		continue;
 	}
 	$topic_done[] = $post_phpbb['topic_id'];
@@ -226,9 +236,9 @@ while ($post_phpbb = mysql_fetch_assoc($result)) {
 
 	// Content
 	$post_phpbb['post_text'] = cleanURL($post_phpbb['post_text']);
-	$article_wp[$cpt_article]['post_content'] = bbcode2html($post_phpbb['post_text'], ':'.$post_phpbb['bbcode_uid']); // post_content
-	$article_wp[$cpt_article]['post_content'] = bbcode2html2($article_wp[$cpt_article]['post_content'], ':'.$post_phpbb['bbcode_uid']); // wp_posts.post_content
-	$article_wp[$cpt_article]['post_content'] = cleanCrochet($article_wp[$cpt_article]['post_content']); // wp_posts.post_content
+	$article_wp[$cpt_article]['post_content'] = bbcode2Html($post_phpbb['post_text'], ':'.$post_phpbb['bbcode_uid']); // post_content
+	$article_wp[$cpt_article]['post_content'] = bbcode2Html2($article_wp[$cpt_article]['post_content'], ':'.$post_phpbb['bbcode_uid']); // wp_posts.post_content
+	$article_wp[$cpt_article]['post_content'] = cleanBracket($article_wp[$cpt_article]['post_content']); // wp_posts.post_content
 	$article_wp[$cpt_article]['post_content'] = killSmileys($article_wp[$cpt_article]['post_content']); // wp_posts.post_content
 	
 	// Category
@@ -242,17 +252,17 @@ while ($post_phpbb = mysql_fetch_assoc($result)) {
 	$article_wp[$cpt_article]['post_type'] = 'post';
 
 	/* Create Wordpress posts */
-	if (wp_insert_post($article_wp[$cpt_article])) {
+	/*if(wp_insert_post($article_wp[$cpt_article])){
 		$converted++;
 	}else{
 		echo '<p class="warning">Error on writing the WP database</p>';
-	}
+	}*/
 	$cpt_article++;
 }
 
 echo '<p class="alert">';
-echo $cpt_article.' posts found.<br>';
-echo $converted.' posts converted.';
+	echo $cpt_article.' posts found.<br>';
+	echo $converted.' posts converted.';
 echo '</p>';
 
 /* ================================================== */
