@@ -17,9 +17,9 @@
 
 <h1>Migrate phpBB2 to Wordpress</h1>
 <style>
-.alert{background:#ff9;}
-.warning{background:#f99;}
-.success{background:#9f9;}
+    .alert{background:#ff9;}
+    .warning{background:#f99;}
+    .success{background:#9f9;}
 </style>
 
 <?php
@@ -29,8 +29,8 @@ $mysql_db   = 'phpbb2wp';   // Edit with your db name
 $mysql_user = 'root';       // Edit with your db username
 $mysql_pwd  = '';           // Edit with your db user password
 
-$wpPrefix       = 'wp_';    //Edit with your WP table prefix
-$phpbbPrefix= 'phpbb_';     //Edit with your WP table prefix
+$wp_prefix       = 'wp_';    //Edit with your WP table name prefix
+$phpbb_prefix= 'phpbb_';     //Edit with your phpBB table name prefix
 
 /* Database connection */
 if (($db_connect = @mysql_connect($mysql_host, $mysql_user, $mysql_pwd)) && (mysql_select_db($mysql_db))) {
@@ -50,13 +50,13 @@ function testTableExists($table, $db) {
 }
 
 function testTables() {
-    global $mysql_db, $phpbbPrefix, $wpPrefix;
-    if (!testTableExists($phpbbPrefix . 'posts', $mysql_db)) {
-        echo '<p class="warning">The phpBB database seems not available (' . $phpbbPrefix . 'posts)';
+    global $mysql_db, $phpbb_prefix, $wp_prefix;
+    if (!testTableExists($phpbb_prefix . 'posts', $mysql_db)) {
+        echo '<p class="warning">The phpBB database seems not available (' . $phpbb_prefix . 'posts)';
         exit;
     }
-    if (!testTableExists($wpPrefix . 'posts', $mysql_db)) {
-        echo '<p class="warning">The Wordpress database seems not available (' . $wpPrefix . 'posts)';
+    if (!testTableExists($wp_prefix . 'posts', $mysql_db)) {
+        echo '<p class="warning">The Wordpress database seems not available (' . $wp_prefix . 'posts)';
         exit;
     }
 }
@@ -207,7 +207,7 @@ $result = mysql_query($sql);
 if ($result) {
     echo '<p>Posts reading...</p>';
 } else {
-    $message  = '<p class="msg warning">Invalid Request: '.mysql_error()."</p>";
+    $message = '<p class="msg warning">Invalid Request: ' . mysql_error() . "</p>";
     die($message);
 }
 
@@ -227,17 +227,17 @@ while ($post_phpbb = mysql_fetch_assoc($result)) {
 
     // Dates - Is GMT convertion needed?
     $article_wp[$cpt_article]['post_date'] = date("Y-m-d H:i:s", $post_phpbb['post_time']); // wp_post.post_date
-    $article_wp[$cpt_article]['post_date_gmt'] = date("Y-m-d H:i:s", $post_phpbb['post_time_gmt']-(60*60)); // wp_post.post_date_gmt
+    $article_wp[$cpt_article]['post_date_gmt'] = date("Y-m-d H:i:s", $post_phpbb['post_time_gmt'] - (60*60)); // wp_post.post_date_gmt
     $article_wp[$cpt_article]['wp_post.post_modified'] = date("Y-m-d H:i:s", $post_phpbb['post_edit_time']); // wp_post.post_modified
-    $article_wp[$cpt_article]['wp_post.post_modified_gmt'] = date("Y-m-d H:i:s", $post_phpbb['post_edit_time']-(60*60)); // wp_post.post_modified_gmt
+    $article_wp[$cpt_article]['wp_post.post_modified_gmt'] = date("Y-m-d H:i:s", $post_phpbb['post_edit_time'] - (60*60)); // wp_post.post_modified_gmt
 
     // Title
     $article_wp[$cpt_article]['post_title'] = $post_phpbb['post_subject']; // wp_posts.post_title
 
     // Content
     $post_phpbb['post_text'] = cleanURL($post_phpbb['post_text']);
-    $article_wp[$cpt_article]['post_content'] = bbcode2Html($post_phpbb['post_text'], ':'.$post_phpbb['bbcode_uid']); // post_content
-    $article_wp[$cpt_article]['post_content'] = bbcode2Html2($article_wp[$cpt_article]['post_content'], ':'.$post_phpbb['bbcode_uid']); // wp_posts.post_content
+    $article_wp[$cpt_article]['post_content'] = bbcode2Html($post_phpbb['post_text'], ':' . $post_phpbb['bbcode_uid']); // post_content
+    $article_wp[$cpt_article]['post_content'] = bbcode2Html2($article_wp[$cpt_article]['post_content'], ':' . $post_phpbb['bbcode_uid']); // wp_posts.post_content
     $article_wp[$cpt_article]['post_content'] = cleanBracket($article_wp[$cpt_article]['post_content']); // wp_posts.post_content
     $article_wp[$cpt_article]['post_content'] = killSmileys($article_wp[$cpt_article]['post_content']); // wp_posts.post_content
 
@@ -252,11 +252,11 @@ while ($post_phpbb = mysql_fetch_assoc($result)) {
     $article_wp[$cpt_article]['post_type'] = 'post';
 
     /* Create Wordpress posts */
-    /*if (wp_insert_post($article_wp[$cpt_article])) {
+    if (wp_insert_post($article_wp[$cpt_article])) {
         $converted++;
     } else {
         echo '<p class="warning">Error on writing the WP database</p>';
-    }*/
+    }
     $cpt_article++;
 }
 
