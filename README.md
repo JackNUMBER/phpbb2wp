@@ -16,10 +16,11 @@ Here our next improvements:
 
 - Create GUI
 - Use PDO interface
+- Use asynchrone tasks
 - <del>Check phpBB database</del>
 - <del>Check Wordpress database</del>
 - <del>Check Wordpress install</del>
-- Add custom prefix parameter
+- <del>Add custom prefix parameter</del>
 - Add comments keep/kill option
 - List phpBB categories/forum before action
 - Simulate phpBB categories/forum to Wordpress categories/tags (not sure)
