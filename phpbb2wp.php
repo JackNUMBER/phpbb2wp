@@ -2,7 +2,7 @@
 /*
  * PHPBB2WP
  * Migrate phpBB forum to WP blog
- * Version 0.3
+ * Version 0.3.1
  * By Colin Braly (@4wk_) & Antoine Cadoret (@JackNUMBER)
  *
  * HOW TO:
@@ -88,7 +88,8 @@ function createCategoriesCrossReference($phpbb_id, $label, $parent_id = null) {
         $categories_cross_reference['sub_cat'][$phpbb_id] = array(
             'label' => $label,
             'wp_id' => wp_create_category($label, $categories_cross_reference['main_cat'][$parent_id]['wp_id']),
-            'wp_parent_id' => $categories_cross_reference[$parent_id]['wp_id']
+            'wp_parent_id' => $categories_cross_reference[$parent_id]['wp_id'],
+            'phpbb_cat_id' => $parent_id
         );
     } else {
         // phpbb category > wordpress main category
@@ -297,7 +298,6 @@ while ($forum_phpbb = mysql_fetch_assoc($result_forum)) {
 
 /* Posts conversion */
 while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
-    echo $post_phpbb['post_subject'] . ' : ' . $categories_cross_reference['sub_cat'][$post_phpbb['forum_id']]['wp_id'] . '<br>';
 
     if (in_array($post_phpbb['topic_id'], $posts_ids_phpbb)) {
         continue;
@@ -308,6 +308,14 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
     $cleaned_content = bbcode2Html2($cleaned_content, ':' . $post_phpbb['bbcode_uid']);
     $cleaned_content = cleanBracket($cleaned_content);
     $cleaned_content = killSmileys($cleaned_content);
+
+    // Categories ids
+    $categories_ids = array(
+        // wordpress main category (phpbb category)
+        $categories_cross_reference['main_cat'][$categories_cross_reference['sub_cat'][$post_phpbb['forum_id']]['phpbb_cat_id']]['wp_id'],
+        // wordpress sub-category (phpbb forum)
+        $categories_cross_reference['sub_cat'][$post_phpbb['forum_id']]['wp_id']
+    );
 
     $posts_ids_phpbb[] = $post_phpbb['topic_id'];
 
@@ -325,7 +333,7 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
     $posts_wp[$count_posts]['post_content'] = $cleaned_content; // wp_posts.post_content
 
     // Category
-    $posts_wp[$count_posts]['post_category'] = array($categories_cross_reference['sub_cat'][$post_phpbb['forum_id']]['wp_id']); // Categories ids
+    $posts_wp[$count_posts]['post_category'] = $categories_ids; // Categories ids
 
     // Specifics Wordpress Meta
     $posts_wp[$count_posts]['comment_status'] = 'open';
