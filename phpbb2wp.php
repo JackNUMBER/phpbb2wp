@@ -27,7 +27,7 @@ $phpbb_prefix = 'phpbb_';  // your phpBB table name prefix
 /* Advanced Settings */
 
 $wp_user_id = 1; // your WP user id
-$phpBB_user_id = 2; // your phpBB user id
+$phpbb_user_id = 2; // your phpBB user id
 
 $keep_emoticons = true;
 $keep_custom_emoticons = true;
@@ -298,45 +298,45 @@ foreach ($wp_required_files as $file) {
 
 /* Database reading */
 $sql = 'SELECT
-    phpbb_posts.post_id,
-    phpbb_posts.topic_id,
-    phpbb_posts.post_time,
-    phpbb_posts.post_edit_time,
-    phpbb_posts.forum_id,
-    phpbb_posts_text.bbcode_uid,
-    phpbb_posts_text.post_subject,
-    phpbb_posts_text.post_text
+    ' . $phpbb_prefix . 'posts.post_id,
+    ' . $phpbb_prefix . 'posts.topic_id,
+    ' . $phpbb_prefix . 'posts.post_time,
+    ' . $phpbb_prefix . 'posts.post_edit_time,
+    ' . $phpbb_prefix . 'posts.forum_id,
+    ' . $phpbb_prefix . 'posts_text.bbcode_uid,
+    ' . $phpbb_prefix . 'posts_text.post_subject,
+    ' . $phpbb_prefix . 'posts_text.post_text
     FROM
-    phpbb_posts,
-    phpbb_posts_text
+    ' . $phpbb_prefix . 'posts,
+    ' . $phpbb_prefix . 'posts_text
     WHERE
-    phpbb_posts.post_id = phpbb_posts_text.post_id
-    AND phpbb_posts.poster_id = ' . $phpBB_user_id . '
-    ORDER BY phpbb_posts.post_time ASC
+    ' . $phpbb_prefix . 'posts.post_id = ' . $phpbb_prefix . 'posts_text.post_id
+    AND ' . $phpbb_prefix . 'posts.poster_id = ' . $phpbb_user_id . '
+    ORDER BY ' . $phpbb_prefix . 'posts.post_time ASC
 ';
 $result_posts = mysql_query($sql);
 
 $sql_cat = 'SELECT
     *
     FROM
-    phpbb_categories
-    ORDER BY phpbb_categories.cat_id ASC
+    ' . $phpbb_prefix . 'categories
+    ORDER BY ' . $phpbb_prefix . 'categories.cat_id ASC
 ';
 $result_cat = mysql_query($sql_cat);
 
 $sql_forum = 'SELECT
     *
     FROM
-    phpbb_forums
-    ORDER BY phpbb_forums.forum_id ASC
+    ' . $phpbb_prefix . 'forums
+    ORDER BY ' . $phpbb_prefix . 'forums.forum_id ASC
 ';
 $result_forum = mysql_query($sql_forum);
 
 $sql_emoticons = 'SELECT
-    phpbb_smilies.code
+    ' . $phpbb_prefix . 'smilies.code
     FROM
-    phpbb_smilies
-    ORDER BY phpbb_smilies.smilies_id ASC
+    ' . $phpbb_prefix . 'smilies
+    ORDER BY ' . $phpbb_prefix . 'smilies.smilies_id ASC
 ';
 $result_emoticons = mysql_query($sql_emoticons);
 
