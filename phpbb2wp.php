@@ -2,14 +2,14 @@
 /*
  * PHPBB2WP
  * Migrate phpBB forum to WP blog
- * Version 0.3.1
+ * Version 0.3.2
  * By Colin Braly (@4wk_) & Antoine Cadoret (@JackNUMBER)
  *
  * HOW TO:
  * 1. Don't be a hero and backup your database ;)
  * 2. Install Wordpress on your phpBB server.
- * 3. Download and edit the file with your db login.
- * 4. Put the file into the root folder.
+ * 3. Download and edit this file with your settings.
+ * 4. Put this file into the root folder.
  * 5. Run it.
  *
  */
@@ -24,8 +24,13 @@ $mysql_pwd = '';           // your db user password
 $wp_prefix = 'wp_';        // your WP table name prefix
 $phpbb_prefix = 'phpbb_';  // your phpBB table name prefix
 
+/* Advanced Settings */
+
 $wp_user_id = 1; // your WP user id
 $phpBB_user_id = 2; // your phpBB user id
+
+$keep_emoticons = true;
+$keep_custom_emoticons = true;
 
 /* end:Settings */
 
@@ -35,6 +40,53 @@ $phpbb_test_table_name = $phpbb_prefix . 'posts';
 $wp_required_files = array(
     dirname( __FILE__ ) . '/wp-blog-header.php',
     dirname( __FILE__ ) . '/wp-admin/includes/taxonomy.php'
+);
+
+// from /wp-includes/functions.php
+$wp_basic_emoticons = array(
+':mrgreen:',
+':neutral:',
+':twisted:',
+  ':arrow:',
+  ':shock:',
+  ':smile:',
+    ':???:',
+   ':cool:',
+   ':evil:',
+   ':grin:',
+   ':idea:',
+   ':oops:',
+   ':razz:',
+   ':roll:',
+   ':wink:',
+    ':cry:',
+    ':eek:',
+    ':lol:',
+    ':mad:',
+    ':sad:',
+      '8-)',
+      '8-O',
+      ':-(',
+      ':-)',
+      ':-?',
+      ':-D',
+      ':-P',
+      ':-o',
+      ':-x',
+      ':-|',
+      ';-)',
+       '8O',
+       ':(',
+       ':)',
+       ':?',
+       ':D',
+       ':P',
+       ':o',
+       ':x',
+       ':|',
+       ';)',
+      ':!:',
+      ':?:',
 );
 
 ?>
@@ -172,32 +224,46 @@ function bbcode2Html2($str, $uid) {
     return $newstr;
 }
 
-/* List smilies */
-function killSmileys($str) {
-    $smileys = array (
-        /* Don't kill them
-        ":D",
-        ":)",
-        ":P",
-        ":-|",
-        ":(",*/
-        ":shock:",
-        ":?",
-        "8-)",
-        ":lol:",
-        ":oops:",
-        ":cry:",
-        ":evil:",
-        ":twisted:",
-        ":roll:",
-        ":wink:",
-        ":!:",
-        ":?:",
-        ":idea:",
-        ":arrow:"
-    );
-    $newstr = str_replace($smileys, '', $str);
-    return $newstr;
+/**
+ * Manage emoticons list with user params
+ *
+ * @param bool $keep_emoticons Define if we need to keep all emoticons
+ * @param bool $keep_custom_emoticons Define if we need to keep phpBB customs emoticons
+ *
+ * @return string
+ */
+function emoticonsManager($keep_emoticons, $keep_custom_emoticons) {
+    global $result_emoticons, $wp_basic_emoticons;
+
+    $phpbb_emoticons = array();
+    global $emoticoncs_to_kill;
+    $emoticoncs_to_kill = array();
+
+    while ($emoticons_phpbb = mysql_fetch_assoc($result_emoticons)) {
+        $phpbb_emoticons[] = $emoticons_phpbb['code'];
+    }
+
+    $phpbb_custom_emoticons = array_diff($phpbb_emoticons, $wp_basic_emoticons);
+
+    if (!$keep_emoticons) {
+        $emoticoncs_to_kill = $phpbb_emoticons;
+    } else if (!$keep_custom_emoticons) {
+        $emoticoncs_to_kill = $phpbb_custom_emoticons;
+    }
+}
+
+/**
+ * Clean emoticons on a string
+ *
+ * @param bool $str Source string
+ *
+ * @return string $cleaned_str String with emoticons cleaned
+ */
+function cleanEmoticons($str) {
+    global $emoticoncs_to_kill;
+
+    $cleaned_str = str_replace($emoticoncs_to_kill, '', $str);
+    return $cleaned_str;
 }
 
 function cleanBracket($str) {
@@ -266,6 +332,14 @@ $sql_forum = 'SELECT
 ';
 $result_forum = mysql_query($sql_forum);
 
+$sql_emoticons = 'SELECT
+    phpbb_smilies.code
+    FROM
+    phpbb_smilies
+    ORDER BY phpbb_smilies.smilies_id ASC
+';
+$result_emoticons = mysql_query($sql_emoticons);
+
 if ($result_posts) {
     echo '<p class="notice">Posts reading...</p>';
 } else {
@@ -286,7 +360,6 @@ $count_converted = 0;
 $count_categories = 0;
 $count_categories_created = 0;
 
-
 /* Create categories */
 while ($category_phpbb = mysql_fetch_assoc($result_cat)) {
     createCategoriesCrossReference($category_phpbb['cat_id'], $category_phpbb['cat_title']);
@@ -295,6 +368,9 @@ while ($category_phpbb = mysql_fetch_assoc($result_cat)) {
 while ($forum_phpbb = mysql_fetch_assoc($result_forum)) {
     createCategoriesCrossReference($forum_phpbb['forum_id'], $forum_phpbb['forum_name'], $forum_phpbb['cat_id']);
 }
+
+/* Define emoticons */
+emoticonsManager($keep_emoticons, $keep_custom_emoticons);
 
 /* Posts conversion */
 while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
@@ -307,7 +383,7 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
     $cleaned_content = bbcode2Html($post_phpbb['post_text'], ':' . $post_phpbb['bbcode_uid']);
     $cleaned_content = bbcode2Html2($cleaned_content, ':' . $post_phpbb['bbcode_uid']);
     $cleaned_content = cleanBracket($cleaned_content);
-    $cleaned_content = killSmileys($cleaned_content);
+    $cleaned_content = cleanEmoticons($cleaned_content);
 
     // Categories ids
     $categories_ids = array(
