@@ -2,7 +2,7 @@
 /*
  * PHPBB2WP
  * Migrate phpBB forum to WP blog
- * Version 0.3.2
+ * Version 0.3.3
  * By Colin Braly (@4wk_) & Antoine Cadoret (@JackNUMBER)
  *
  * HOW TO:
@@ -120,9 +120,9 @@ mysql_query("SET NAMES 'utf8'", $db_connect);
  * @return bool True if table exists
  */
 function testTableExists($table, $db) {
-    $query = 'SHOW TABLES FROM ' . $db . ' LIKE \'' . $table . '\'';
-    $exec = mysql_query($query);
-    return mysql_num_rows($exec);
+    $sql_test = 'SHOW TABLES FROM ' . $db . ' LIKE \'' . $table . '\'';
+    $result_test = mysql_query($sql_test);
+    return mysql_num_rows($result_test);
 }
 
 /**
@@ -222,6 +222,15 @@ function bbcode2Html2($str, $uid) {
     );
     $newstr = str_replace($bbcode, $htmlcode, $str);
     return $newstr;
+}
+
+/* Sanitize string to create a string without accent or special character - source http://stackoverflow.com/questions/2103797/url-friendly-username-in-php */
+function sanitize($string) {
+    return strtolower(
+        trim(
+            preg_replace('~[^0-9a-z]+~i', '-', html_entity_decode(preg_replace('~&([a-z]{1,2})(?:acute|cedil|circ|grave|lig|orn|ring|slash|th|tilde|uml);~i', '$1', htmlentities($string, ENT_QUOTES, 'UTF-8')), ENT_QUOTES, 'UTF-8')),
+        '-')
+    );
 }
 
 /**
@@ -395,11 +404,11 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
 
     $posts_ids_phpbb[] = $post_phpbb['topic_id'];
 
-    // Dates - Is GMT convertion needed?
+    // Dates
     $posts_wp[$count_posts]['post_date'] = date("Y-m-d H:i:s", $post_phpbb['post_time']); // wp_post.post_date
     $posts_wp[$count_posts]['post_date_gmt'] = date("Y-m-d H:i:s", $post_phpbb['post_time_gmt'] - (60*60)); // wp_post.post_date_gmt
-    $posts_wp[$count_posts]['wp_post.post_modified'] = date("Y-m-d H:i:s", $post_phpbb['post_edit_time']); // wp_post.post_modified
-    $posts_wp[$count_posts]['wp_post.post_modified_gmt'] = date("Y-m-d H:i:s", $post_phpbb['post_edit_time'] - (60*60)); // wp_post.post_modified_gmt
+    $posts_wp[$count_posts]['post_modified'] = date("Y-m-d H:i:s", $post_phpbb['post_edit_time']); // wp_post.post_modified
+    $posts_wp[$count_posts]['post_modified_gmt'] = date("Y-m-d H:i:s", $post_phpbb['post_edit_time'] - (60*60)); // wp_post.post_modified_gmt
 
     // Title
     $posts_wp[$count_posts]['post_title'] = $post_phpbb['post_subject']; // wp_posts.post_title
@@ -408,25 +417,62 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
     $post_phpbb['post_text'] = cleanURL($post_phpbb['post_text']);
     $posts_wp[$count_posts]['post_content'] = $cleaned_content; // wp_posts.post_content
 
-    // Category
-    $posts_wp[$count_posts]['post_category'] = $categories_ids; // Categories ids
-
     // Specifics Wordpress Meta
-    $posts_wp[$count_posts]['comment_status'] = 'open';
-    $posts_wp[$count_posts]['ping_status'] = 'open';
-    $posts_wp[$count_posts]['post_author'] = $wp_user_id; // Specify an user
-    $posts_wp[$count_posts]['post_status'] = 'publish';
-    $posts_wp[$count_posts]['post_type'] = 'post';
+    $posts_wp[$count_posts]['post_author'] = $wp_user_id; // wp_posts.post_author
+    $posts_wp[$count_posts]['post_status'] = 'publish'; // wp_posts.post_status
+    $posts_wp[$count_posts]['post_name'] = sanitize($post_phpbb['post_subject']); // wp_posts.post_name
 
-    /* Create Wordpress posts */
-    if (wp_insert_post($posts_wp[$count_posts])) {
+    $sql_insert_post = 'INSERT
+    INTO ' . $wp_prefix . 'posts
+    (post_author,
+    post_date,
+    post_date_gmt,
+    post_content,
+    post_title,
+    post_status,
+    post_name,
+    post_modified,
+    post_modified_gmt)
+    VALUES
+    ("' . $posts_wp[$count_posts]['post_author'] . '",
+    "' . $posts_wp[$count_posts]['post_date'] . '",
+    "' . $posts_wp[$count_posts]['post_date_gmt'] . '",
+    "' . mysql_real_escape_string($posts_wp[$count_posts]['post_content']) . '",
+    "' . mysql_real_escape_string($posts_wp[$count_posts]['post_title']) . '",
+    "' . $posts_wp[$count_posts]['post_status'] . '",
+    "' . $posts_wp[$count_posts]['post_name'] . '",
+    "' . $posts_wp[$count_posts]['post_modified'] . '",
+    "' . $posts_wp[$count_posts]['post_modified_gmt'] . '")
+    ';
+
+    /* Create Wordpress posts and insert in relationship table */
+    if (mysql_query($sql_insert_post)) {
+
+        // get last post id - we suppose this is the current post id
+        $current_post_id = mysql_insert_id();
+
+        foreach ($categories_ids as $category_id) {
+            $sql_insert_relationships = 'INSERT
+            INTO ' . $wp_prefix . 'term_relationships
+            (object_id,
+            term_taxonomy_id)
+            VALUES
+            (' . $current_post_id . ',
+            ' . $category_id . ')
+            ';
+
+            mysql_query($sql_insert_relationships);
+        }
+
+        // @TODO: will be an option to see convert progress
+        // echo '<p><i>' .  $posts_wp[$count_posts]['post_title'] . '</i> converted.</p>';
+
         $count_converted++;
     } else {
         echo '<p class="warning">Error on writing the WP database</p>';
     }
     $count_posts++;
 }
-
 
 echo '<p class="notice">';
 echo $count_posts . ' posts found.<br>';
