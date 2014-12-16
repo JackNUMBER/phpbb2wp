@@ -451,7 +451,6 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
      * See 96e3e23023898b03de760179112f04fe5bfa4a31 for more details.
      */
     if (mysql_query($sql_insert_post)) {
-    if (mysql_query($sql_insert_post)) {
 
         // get last post id - we suppose this is the current post id
         $current_post_id = mysql_insert_id();
