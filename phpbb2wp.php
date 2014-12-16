@@ -446,6 +446,11 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
     ';
 
     /* Create Wordpress posts and insert in relationship table */
+    /* I choose to use a sql insert instead of Wordpress wp_insert_post() function for faster results.
+     * With this choice we need to insert manually in the join table (wp_term_relationships).
+     * See 96e3e23023898b03de760179112f04fe5bfa4a31 for more details.
+     */
+    if (mysql_query($sql_insert_post)) {
     if (mysql_query($sql_insert_post)) {
 
         // get last post id - we suppose this is the current post id
