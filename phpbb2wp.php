@@ -464,8 +464,12 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
             (' . $current_post_id . ',
             ' . $category_id . ')
             ';
-
             mysql_query($sql_insert_relationships);
+
+            $sql_update_cat_count = 'UPDATE ' . $wp_prefix . 'term_taxonomy
+            SET count = count+1
+            WHERE term_id = ' . $category_id;
+            mysql_query($sql_update_cat_count);
         }
 
         // @TODO: will be an option to see convert progress
