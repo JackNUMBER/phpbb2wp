@@ -42,6 +42,9 @@ $wp_required_files = array(
     dirname( __FILE__ ) . '/wp-admin/includes/taxonomy.php'
 );
 
+// set unlimited execution time
+set_time_limit(0);
+
 // from /wp-includes/functions.php
 $wp_basic_emoticons = array(
 ':mrgreen:',
