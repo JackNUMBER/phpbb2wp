@@ -29,5 +29,5 @@ Here our next improvements:
 - Add old database manager (keep/kill)
 - Add BBcode manager (from bbcode table)
 - Add link manager (list old/new post url)
-- Add smiley killer (from smileys table)
+- <del>Add smiley killer (from smileys table)</del>
 - Add pictures manager (not sure)
