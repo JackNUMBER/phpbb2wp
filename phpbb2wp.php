@@ -32,6 +32,9 @@ $phpbb_user_id = 2; // your phpBB user id
 $keep_emoticons = true;
 $keep_custom_emoticons = true;
 
+$restrict_to_one_user = true; // read phpBB post of only $phpbb_user_id
+
+
 /* end:Settings */
 
 $wp_test_table_name = $wp_prefix . 'posts';
@@ -322,10 +325,12 @@ $sql = 'SELECT
     ' . $phpbb_prefix . 'posts,
     ' . $phpbb_prefix . 'posts_text
     WHERE
-    ' . $phpbb_prefix . 'posts.post_id = ' . $phpbb_prefix . 'posts_text.post_id
-    AND ' . $phpbb_prefix . 'posts.poster_id = ' . $phpbb_user_id . '
-    ORDER BY ' . $phpbb_prefix . 'posts.post_time ASC
-';
+    ' . $phpbb_prefix . 'posts.post_id = ' . $phpbb_prefix . 'posts_text.post_id';
+
+if ($restrict_read_to_one_user) {
+    $sql .= ' AND ' . $phpbb_prefix . 'posts.poster_id = ' . $phpbb_user_id;
+}
+$sql .= ' ORDER BY ' . $phpbb_prefix . 'posts.post_time ASC';
 $result_posts = mysql_query($sql);
 
 $sql_cat = 'SELECT
