@@ -32,7 +32,7 @@ $phpbb_user_id = 2; // your phpBB user id
 $keep_emoticons = true;
 $keep_custom_emoticons = true;
 
-$restrict_to_one_user = true; // read phpBB post of only $phpbb_user_id
+$restrict_read_to_one_user = true; // read phpBB post of only $phpbb_user_id
 
 
 /* end:Settings */
