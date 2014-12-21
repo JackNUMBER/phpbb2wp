@@ -201,9 +201,10 @@ function bbcode2Html($str, $uid = '') {
         "<span style=\"font-size:", "</span>",
         '<a href="', "</a>",
         "<a href=\"mailto:", "</a>",
-        "<code>", "</code>",
-        "<code>", "</code>",
-        "<table width=100% bgcolor=lightgray><tr><td bgcolor=white>", "</td></tr></table>"
+        // on phpBB the [code] tag generate <pre> like elements
+        "<pre>", "</pre>",
+        "<pre>", "</pre>",
+        "<blockquote>", "</blockquote>"
     );
     $newstr = str_replace('<', '&lt;', $str);
     $newstr = str_replace('>', '&gt;', $newstr);
