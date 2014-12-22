@@ -2,7 +2,7 @@
 /*
  * PHPBB2WP
  * Migrate phpBB forum to WP blog
- * Version 0.3.3
+ * Version 0.3.4
  * By Colin Braly (@4wk_) & Antoine Cadoret (@JackNUMBER)
  *
  * HOW TO:
@@ -158,77 +158,49 @@ function createCategoriesCrossReference($phpbb_id, $label, $parent_id = null) {
     }
 }
 
-/* BBcode URL tag standardization */
-function cleanURL($str) {
-    while (preg_match('#\[url\]http://(.*?)\[/url\]#', $str, $matches)) {
-        $tag = str_replace('[url]','[url=http://' . $matches[1] . ']', $matches[0]);
-        $str = str_replace($matches[0], $tag, $str);
+/**
+ * Replace BB code tags by HTML tags
+ * @param string $str Source string
+ * @param string $uid Uniq ID
+ * @return string Cleaned string
+ */
+function bbcode_to_html($str, $uid){
+
+    // remove uniq id from BB tags
+    $str = str_replace($uid, '', $str);
+
+    $bb_extended = array(
+        "/\[url](.*?)\[\/url]/i" => "<a href=\"$1\">$1</a>",
+        "/\[url=(.*?)\](.*?)\[\/url\]/i" => "<a href=\"$1\" title=\"$1\">$2</a>",
+        "/\[email=(.*?)\](.*?)\[\/email\]/i" => "<a href=\"mailto:$1\">$2</a>",
+        "/\[img\]([^[]*)\[\/img\]/i" => "<img src=\"$1\" alt=\" \" />",
+        "/\[color=(.*?)\]/i" => "<span style=\"color:$1\">",
+        "/\[size=(.*?)\](.*?)\[\/size\]/i" => "<span style=\"font-size:$1px\">$2</span>",
+        // for phpbb3 :
+        // "/\[size=(.*?)\](.*?)\[\/size\]/i" => "<span style=\"font-size:$1%\">$2</span>",
+        "/\[quote=(.*?)\](.*?)\[\/quote\]/i" => "<blockquote>$2</blockquote>",
+        "/\[\*](.*)/i" => "<li>$1</li>",
+    );
+
+    foreach($bb_extended as $match=>$replacement){
+        $str = preg_replace($match, $replacement, $str);
     }
-    while (preg_match('#\[url\]www.(.*?)\[/url\]#', $str, $matches)) {
-        $tag = str_replace('[url]','[url=http://www.' . $matches[1] . ']', $matches[0]);
-        $str = str_replace($matches[0], $tag, $str);
-    }
+
+    $bb_tags = array(
+        '[b]' => '<strong>','[/b]' => '</strong>',
+        '[i]' => '<em>','[/i]' => '</em>',
+        '[u]' => '<span style="text-decoration:underline;">','[/u]' => '</span>',
+        '[/color]' => '</span>',
+        '[list]' => '<ul>','[/list:u]' => '</ul>',
+        '[list=1]' => '<ol>','[/list:o]' => '</ol>',
+        // list-item closing tag is deleted to avoid dupplication, see $bb_extended
+        '[/*:m]' => '',
+        '[code]' => '<code>','[/code]' => '</code>',
+        '[quote]' => '<blockquote>','[/quote]' => '</blockquote>',
+    );
+
+    $str = str_ireplace(array_keys($bb_tags), array_values($bb_tags), $str);
     return $str;
-}
-
-/* List BBcode */
-function bbcode2Html($str, $uid = '') {
-    $bbcode = array(
-        "[list$uid]", "[*$uid]", "[/list$uid]",
-        "[list=1$uid]", "[/list:o$uid]",
-        "[img$uid]", "[/img$uid]",
-        "[b$uid]", "[/b$uid]",
-        "[u$uid]", "[/u$uid]",
-        "[i$uid]", "[/i$uid]",
-        '[color=', "[/color$uid]",
-        "[size=\"", "[/size$uid]",
-        "[size=", "[/size$uid]",
-        '[url=', "[/url]",
-        "[mail=\"", "[/mail]",
-        "[code]", "[/code]",
-        "[code:1$uid]", "[/code:1$uid]",
-        "[quote]", "[/quote]",
-    );
-    $htmlcode = array(
-        "<ul>", "<li>", "</ul>",
-        "<ul>", "</ul>",
-        "<img src=\"", "\">",
-        "<strong>", "</strong>",
-        "<u>", "</u>",
-        "<em>", "</em>",
-        "<span style=\"color:", "</span>",
-        "<span style=\"font-size:", "</span>",
-        "<span style=\"font-size:", "</span>",
-        '<a href="', "</a>",
-        "<a href=\"mailto:", "</a>",
-        // on phpBB the [code] tag generate <pre> like elements
-        "<pre>", "</pre>",
-        "<pre>", "</pre>",
-        "<blockquote>", "</blockquote>"
-    );
-    $newstr = str_replace('<', '&lt;', $str);
-    $newstr = str_replace('>', '&gt;', $newstr);
-    $newstr = str_replace($bbcode, $htmlcode, $newstr);
-    $newstr = nl2br($newstr);
-    return $newstr;
-}
-
-/* Convert BBcode to HTML */
-function bbcode2Html2($str, $uid) {
-    $bbcode = array(
-        '"' . $uid . ']',
-        '"]',
-        $uid . ']',
-        ']'
-    );
-    $htmlcode = array(
-        '">',
-        '">',
-        '">',
-        '">'
-    );
-    $newstr = str_replace($bbcode, $htmlcode, $str);
-    return $newstr;
 }
 
 /* Sanitize string to create a string without accent or special character - source http://stackoverflow.com/questions/2103797/url-friendly-username-in-php */
@@ -280,14 +252,6 @@ function cleanEmoticons($str) {
 
     $cleaned_str = str_replace($emoticoncs_to_kill, '', $str);
     return $cleaned_str;
-}
-
-function cleanBracket($str) {
-    while (preg_match('#\[(.*?)">#', $str, $matches)) {
-        $tag = str_replace('">',']', $matches[0]);
-        $str = str_replace($matches[0], $tag, $str);
-    }
-    return $str;
 }
 
 /* ================================================== */
@@ -398,9 +362,7 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
     }
 
     // Clean content
-    $cleaned_content = bbcode2Html($post_phpbb['post_text'], ':' . $post_phpbb['bbcode_uid']);
-    $cleaned_content = bbcode2Html2($cleaned_content, ':' . $post_phpbb['bbcode_uid']);
-    $cleaned_content = cleanBracket($cleaned_content);
+    $cleaned_content = bbcode_to_html($post_phpbb['post_text'], ':' . $post_phpbb['bbcode_uid']);
     $cleaned_content = cleanEmoticons($cleaned_content);
 
     // Categories ids
@@ -423,7 +385,6 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
     $posts_wp[$count_posts]['post_title'] = $post_phpbb['post_subject']; // wp_posts.post_title
 
     // Content
-    $post_phpbb['post_text'] = cleanURL($post_phpbb['post_text']);
     $posts_wp[$count_posts]['post_content'] = $cleaned_content; // wp_posts.post_content
 
     // Specifics Wordpress Meta
