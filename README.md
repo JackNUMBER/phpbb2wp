@@ -1,6 +1,6 @@
 #Convert phpBB to Wordpress
 phpbb2wp is a free admin tool to migrate phpBB forum to Wordpress system. Created and maintained by [Colin Braly](http://twitter.com/4wk_) and [Antoine Cadoret](http://twitter.com/jacknumber).
-This tool work only for phpBB2 for now.
+This tool works only for phpBB3 (you can easily upgrade your phpBB2 to phpBB3 with the phpBB3 install wizard).
 
 ## Getting Started
 To use this tool follow these steps:

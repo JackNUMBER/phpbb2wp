@@ -2,7 +2,7 @@
 /*
  * PHPBB2WP
  * Migrate phpBB forum to WP blog
- * Version 0.3.4
+ * Version 0.4
  * By Colin Braly (@4wk_) & Antoine Cadoret (@JackNUMBER)
  *
  * HOW TO:
@@ -11,6 +11,9 @@
  * 3. Download and edit this file with your settings.
  * 4. Put this file into the root folder.
  * 5. Run it.
+ *
+ * WARNING: Only work with phpBB3 database.
+ *          You can upgrade your forum easily with phpBB3 install wizard.
  *
  */
 
@@ -102,7 +105,7 @@ $wp_basic_emoticons = array(
     .success{background:#9f9;}
 </style>
 
-<h1>Migrate phpBB2 to Wordpress</h1>
+<h1>Migrate phpBB3 to Wordpress</h1>
 <?php
 
 /* Database connection */
@@ -138,19 +141,19 @@ function testTableExists($table, $db) {
 function createCategoriesCrossReference($phpbb_id, $label, $parent_id = null) {
     global $categories_cross_reference;
 
-    if ($parent_id) {
+    if ($parent_id == 0) {
+        // phpbb main forum > wordpress main category
+        $categories_cross_reference['main_cat'][$phpbb_id] = array(
+            'label' => $label,
+            'wp_id' => wp_create_category($label)
+        );
+    } else {
         // phpbb forum > wordpress sub-category
         $categories_cross_reference['sub_cat'][$phpbb_id] = array(
             'label' => $label,
             'wp_id' => wp_create_category($label, $categories_cross_reference['main_cat'][$parent_id]['wp_id']),
             'wp_parent_id' => $categories_cross_reference[$parent_id]['wp_id'],
             'phpbb_cat_id' => $parent_id
-        );
-    } else {
-        // phpbb category > wordpress main category
-        $categories_cross_reference['main_cat'][$phpbb_id] = array(
-            'label' => $label,
-            'wp_id' => wp_create_category($label)
         );
     }
 }
@@ -253,7 +256,7 @@ function cleanEmoticons($str) {
 
 /* Tests */
 if (!testTableExists($wp_test_table_name, $mysql_db)) {
-    exit('p class="warning">The Wordpress database seems not available (<code>' . $wp_test_table_name . '</code> not found)');
+    exit('<p class="warning">The Wordpress database seems not available (<code>' . $wp_test_table_name . '</code> not found)');
 }
 
 if (!testTableExists($phpbb_test_table_name, $mysql_db)) {
@@ -270,61 +273,58 @@ foreach ($wp_required_files as $file) {
 }
 
 /* Database reading */
-$sql = 'SELECT
-    ' . $phpbb_prefix . 'posts.post_id,
-    ' . $phpbb_prefix . 'posts.topic_id,
-    ' . $phpbb_prefix . 'posts.post_time,
-    ' . $phpbb_prefix . 'posts.post_edit_time,
-    ' . $phpbb_prefix . 'posts.forum_id,
-    ' . $phpbb_prefix . 'posts_text.bbcode_uid,
-    ' . $phpbb_prefix . 'posts_text.post_subject,
-    ' . $phpbb_prefix . 'posts_text.post_text
+// read posts
+$sql_posts = 'SELECT
+    post_id,
+    topic_id,
+    post_time,
+    post_edit_time,
+    forum_id,
+    bbcode_uid,
+    post_subject,
+    post_text
     FROM
-    ' . $phpbb_prefix . 'posts,
-    ' . $phpbb_prefix . 'posts_text
-    WHERE
-    ' . $phpbb_prefix . 'posts.post_id = ' . $phpbb_prefix . 'posts_text.post_id';
+    ' . $phpbb_prefix . 'posts
+    ';
 
 if ($restrict_read_to_one_user) {
-    $sql .= ' AND ' . $phpbb_prefix . 'posts.poster_id = ' . $phpbb_user_id;
+    $sql_posts .= 'WHERE ' . $phpbb_prefix . 'posts.poster_id = ' . $phpbb_user_id;
 }
-$sql .= ' ORDER BY ' . $phpbb_prefix . 'posts.post_time ASC';
-$result_posts = mysql_query($sql);
+$sql_posts .= ' ORDER BY ' . $phpbb_prefix . 'posts.post_time ASC';
+$result_posts = mysql_query($sql_posts);
 
-$sql_cat = 'SELECT
-    *
-    FROM
-    ' . $phpbb_prefix . 'categories
-    ORDER BY ' . $phpbb_prefix . 'categories.cat_id ASC
-';
-$result_cat = mysql_query($sql_cat);
-
-$sql_forum = 'SELECT
-    *
+// read forums
+$sql_forums = 'SELECT
+    forum_id,
+    parent_id,
+    forum_name,
+    forum_desc
     FROM
     ' . $phpbb_prefix . 'forums
-    ORDER BY ' . $phpbb_prefix . 'forums.forum_id ASC
+    ORDER BY ' . $phpbb_prefix . 'forums.parent_id ASC
 ';
-$result_forum = mysql_query($sql_forum);
+$result_forums = mysql_query($sql_forums);
 
+// read emoticons
 $sql_emoticons = 'SELECT
-    ' . $phpbb_prefix . 'smilies.code
+    smiley_id
+    code
     FROM
     ' . $phpbb_prefix . 'smilies
-    ORDER BY ' . $phpbb_prefix . 'smilies.smilies_id ASC
+    ORDER BY ' . $phpbb_prefix . 'smilies.smiley_id ASC
 ';
 $result_emoticons = mysql_query($sql_emoticons);
 
 if ($result_posts) {
     echo '<p class="notice">Posts reading...</p>';
 } else {
-    exit('<p class="msg warning">Invalid Request: ' . mysql_error() . "</p>");
+    exit('<p class="msg warning">Invalid Request for posts: ' . mysql_error() . "</p>");
 }
 
-if ($result_forum) {
+if ($result_forums) {
     echo '<p class="notice">Forums reading...</p>';
 } else {
-    exit('<p class="msg warning">Invalid Request: ' . mysql_error() . "</p>");
+    exit('<p class="msg warning">Invalid Request for forums: ' . mysql_error() . "</p>");
 }
 
 $categories_cross_reference = array();
@@ -335,13 +335,10 @@ $count_converted = 0;
 $count_categories = 0;
 $count_categories_created = 0;
 
-/* Create categories */
-while ($category_phpbb = mysql_fetch_assoc($result_cat)) {
-    createCategoriesCrossReference($category_phpbb['cat_id'], $category_phpbb['cat_title']);
-}
 
-while ($forum_phpbb = mysql_fetch_assoc($result_forum)) {
-    createCategoriesCrossReference($forum_phpbb['forum_id'], $forum_phpbb['forum_name'], $forum_phpbb['cat_id']);
+/* Create categories */
+while ($forum_phpbb = mysql_fetch_assoc($result_forums)) {
+    createCategoriesCrossReference($forum_phpbb['forum_id'], $forum_phpbb['forum_name'], $forum_phpbb['parent_id']);
 }
 
 /* Define emoticons */
