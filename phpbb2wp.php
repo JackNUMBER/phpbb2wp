@@ -119,10 +119,8 @@ mysql_query("SET NAMES 'utf8'", $db_connect);
 
 /**
  * Test if a table exists in the database
- *
  * @param string $table Targeted table
  * @param string $db Targeted database
- *
  * @return bool True if table exists
  */
 function testTableExists($table, $db) {
@@ -133,7 +131,6 @@ function testTableExists($table, $db) {
 
 /**
  * Create an associative array between phpBB categories/forum and new Wordpress categories
- *
  * @param int $phpbb_id The old phpBB id
  * @param string $label The category title
  * @param int $parent_id The Wordpress parent id
@@ -214,10 +211,8 @@ function sanitize($string) {
 
 /**
  * Manage emoticons list with user params
- *
  * @param bool $keep_emoticons Define if we need to keep all emoticons
  * @param bool $keep_custom_emoticons Define if we need to keep phpBB customs emoticons
- *
  * @return string
  */
 function emoticonsManager($keep_emoticons, $keep_custom_emoticons) {
@@ -242,9 +237,7 @@ function emoticonsManager($keep_emoticons, $keep_custom_emoticons) {
 
 /**
  * Clean emoticons on a string
- *
  * @param bool $str Source string
- *
  * @return string $cleaned_str String with emoticons cleaned
  */
 function cleanEmoticons($str) {
