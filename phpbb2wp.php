@@ -45,7 +45,8 @@ $phpbb_test_table_name = $phpbb_prefix . 'posts';
 
 $wp_required_files = array(
     dirname( __FILE__ ) . '/wp-blog-header.php',
-    dirname( __FILE__ ) . '/wp-admin/includes/taxonomy.php'
+    dirname( __FILE__ ) . '/wp-admin/includes/taxonomy.php',
+    dirname( __FILE__ ) . '/wp-config.php',
 );
 
 // set unlimited execution time
@@ -130,6 +131,18 @@ function testTableExists($table, $db) {
     $sql_test = 'SHOW TABLES FROM ' . $db . ' LIKE \'' . $table . '\'';
     $result_test = mysql_query($sql_test);
     return mysql_num_rows($result_test);
+}
+
+/**
+ * Check phpBB version in the database
+ * @return bool True if table exists
+ */
+function phpBbVersion() {
+    global $phpbb_prefix;
+
+    $sql_version = 'SELECT config_value FROM ' . $phpbb_prefix . 'config WHERE config_name = "version"';
+    $data_version = substr(mysql_fetch_assoc(mysql_query($sql_version))['config_value'], 0, 1);
+    return $data_version;
 }
 
 /**
@@ -261,6 +274,10 @@ if (!testTableExists($wp_test_table_name, $mysql_db)) {
 
 if (!testTableExists($phpbb_test_table_name, $mysql_db)) {
     exit('<p class="warning">The phpBB database seems not available (<code>' . $phpbb_test_table_name . '</code> not found)');
+}
+
+if (phpBbVersion() != 3 ) {
+    exit('<p class="warning">phpBB' . phpBbVersion() . ' is not suppoorted (database supported version: 3)');
 }
 
 // define('WP_USE_THEMES', false);
