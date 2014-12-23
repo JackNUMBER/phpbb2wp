@@ -25,7 +25,7 @@ Here our next improvements:
 - List phpBB categories/forum before action
 - Simulate phpBB categories/forum to Wordpress categories/tags (not sure)
 - Add category manager (how to use phpBB categories/forum)
-- Detect phpBB version
+- <del>Detect phpBB version</del>
 - Add old database manager (keep/kill)
 - Add BBcode manager (from bbcode table)
 - Add link manager (list old/new post url)
