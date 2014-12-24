@@ -113,7 +113,7 @@ $wp_basic_emoticons = array(
 if (($db_connect = @mysql_connect($mysql_host, $mysql_user, $mysql_pwd)) && (mysql_select_db($mysql_db))) {
     echo '<p class="success">Database connection successful</p>';
 } else {
-    echo '<p class="msg warning">Database connection failed: ' . mysql_error() . '</p>';
+    echo '<p class="warning">Database connection failed: ' . mysql_error() . '</p>';
     exit;
 }
 mysql_query("SET NAMES 'utf8'", $db_connect);
@@ -188,9 +188,7 @@ function bbcode_to_html($str, $uid){
         "/\[email=(.*?)\](.*?)\[\/email\]/i" => "<a href=\"mailto:$1\">$2</a>",
         "/\[img\]([^[]*)\[\/img\]/i" => "<img src=\"$1\" alt=\" \" />",
         "/\[color=(.*?)\]/i" => "<span style=\"color:$1\">",
-        "/\[size=(.*?)\](.*?)\[\/size\]/i" => "<span style=\"font-size:$1px\">$2</span>",
-        // for phpbb3 :
-        // "/\[size=(.*?)\](.*?)\[\/size\]/i" => "<span style=\"font-size:$1%\">$2</span>",
+        "/\[size=(.*?)\](.*?)\[\/size\]/i" => "<span style=\"font-size:$1%\">$2</span>",
         "/\[quote=(.*?)\](.*?)\[\/quote\]/i" => "<blockquote>$2</blockquote>",
         "/\[\*](.*)/i" => "<li>$1</li>",
     );
@@ -280,12 +278,11 @@ if (phpBbVersion() != 3 ) {
     exit('<p class="warning">phpBB' . phpBbVersion() . ' is not suppoorted (database supported version: 3)');
 }
 
-// define('WP_USE_THEMES', false);
 foreach ($wp_required_files as $file) {
     if (file_exists($file)) {
         require($file);
     } else {
-        exit('<p class="msg warning">Wordpress seems not installed (<code>' . $file . '</code> not found)</p>');
+        exit('<p class="warning">Wordpress seems not installed (<code>' . $file . '</code> not found)</p>');
     }
 }
 
@@ -335,13 +332,13 @@ $result_emoticons = mysql_query($sql_emoticons);
 if ($result_posts) {
     echo '<p class="notice">Posts reading...</p>';
 } else {
-    exit('<p class="msg warning">Invalid Request for posts: ' . mysql_error() . "</p>");
+    exit('<p class="warning">Invalid Request for posts: ' . mysql_error() . "</p>");
 }
 
 if ($result_forums) {
     echo '<p class="notice">Forums reading...</p>';
 } else {
-    exit('<p class="msg warning">Invalid Request for forums: ' . mysql_error() . "</p>");
+    exit('<p class="warning">Invalid Request for forums: ' . mysql_error() . "</p>");
 }
 
 $categories_cross_reference = array();
