@@ -17,6 +17,7 @@ Here our next improvements:
 - Create GUI
 - Use PDO interface
 - Use asynchrone tasks
+- Put phpBB topics answers in Wordpress posts comments
 - <del>Check phpBB database</del>
 - <del>Check Wordpress database</del>
 - <del>Check Wordpress install</del>

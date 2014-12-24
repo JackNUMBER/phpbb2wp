@@ -2,7 +2,7 @@
 /*
  * PHPBB2WP
  * Migrate phpBB forum to WP blog
- * Version 0.4
+ * Version 0.4.1
  * By Colin Braly (@4wk_) & Antoine Cadoret (@JackNUMBER)
  *
  * HOW TO:
@@ -289,20 +289,22 @@ foreach ($wp_required_files as $file) {
 /* Database reading */
 // read posts
 $sql_posts = 'SELECT
-    post_id,
-    topic_id,
-    post_time,
-    post_edit_time,
-    forum_id,
-    bbcode_uid,
-    post_subject,
-    post_text
+    ' . $phpbb_prefix . 'posts.post_id,
+    ' . $phpbb_prefix . 'posts.topic_id,
+    ' . $phpbb_prefix . 'posts.post_time,
+    ' . $phpbb_prefix . 'posts.post_edit_time,
+    ' . $phpbb_prefix . 'posts.forum_id,
+    ' . $phpbb_prefix . 'posts.bbcode_uid,
+    ' . $phpbb_prefix . 'posts.post_subject,
+    ' . $phpbb_prefix . 'posts.post_text
     FROM
+    ' . $phpbb_prefix . 'topics,
     ' . $phpbb_prefix . 'posts
-    ';
+    WHERE
+    ' . $phpbb_prefix . 'topics.topic_first_post_id = ' . $phpbb_prefix . 'posts.post_id';
 
 if ($restrict_read_to_one_user) {
-    $sql_posts .= 'WHERE ' . $phpbb_prefix . 'posts.poster_id = ' . $phpbb_user_id;
+    $sql_posts .= ' AND ' . $phpbb_prefix . 'posts.poster_id = ' . $phpbb_user_id;
 }
 $sql_posts .= ' ORDER BY ' . $phpbb_prefix . 'posts.post_time ASC';
 $result_posts = mysql_query($sql_posts);
