@@ -37,7 +37,6 @@ $keep_custom_emoticons = true;
 
 $restrict_read_to_one_user = true; // read phpBB post of only $phpbb_user_id
 
-
 /* end:Settings */
 
 $wp_test_table_name = $wp_prefix . 'posts';
@@ -206,7 +205,7 @@ function bbcode_to_html($str, $uid){
         '[list=1]' => '<ol>','[/list:o]' => '</ol>',
         // list-item closing tag is deleted to avoid dupplication, see $bb_extended
         '[/*:m]' => '',
-        '[code]' => '<code>','[/code]' => '</code>',
+        '[code]' => '<pre>','[/code]' => '</pre>',
         '[quote]' => '<blockquote>','[/quote]' => '</blockquote>',
     );
 
