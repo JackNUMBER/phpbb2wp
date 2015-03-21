@@ -1,0 +1,49 @@
+// Variables : Colors
+$white: #fff;
+$soft_blue: #5677fc;
+$lime: #eeff41;
+$alabaster_grey: #f9f9f9;
+$alto_grey: #e0e0e0;
+$dusty_grey: #999;
+$tundora_grey: #454545;
+$dark_blue: #3f51b5;
+$green: #8bc34a;
+$red: #f44336;
+
+// Variables : Sizes
+$header_font_size: 56;
+$title_font_size: 20;
+$main_text_font_size: 13;
+
+$header_max_height: 270;
+$header_max_height: 95;
+$card_max_width: 700;
+$card_min_height: 580;
+$button_size: 57;
+$button_arrow_size: 16;
+$separator_size: 1;
+
+// Variables : Spacing
+$header_h_spacing: 24;
+$card_h_spacing: 30;
+$card_v_spacing: 40;
+$paragraph_spacing: 20;
+$button_floating: 4.6%;
+
+// Color attribution
+$body_background: $alabaster_grey;
+$main_text_color: $dusty_grey;
+$card_background: $white;
+$header_color: $white;
+$header_background: $soft_blue;
+	$title_color: $header_background;
+	$step_color: $header_background;
+$separator_border_color: $alto_grey;
+$button_color: $tundora_grey;
+$button_background: $lime;
+$link_color: $dark_blue;
+$success_color: $green;
+$error_color: $red;
+
+// Layout
+
