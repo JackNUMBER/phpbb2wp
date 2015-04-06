@@ -146,27 +146,49 @@ function phpBbVersion() {
 
 /**
  * Create an associative array between phpBB categories/forum and new Wordpress categories
- * @param int $phpbb_id The old phpBB id
- * @param string $label The category title
- * @param int $parent_id The Wordpress parent id
+ * And fill an array $insert_categories_taxonomy_data for wp_term_taxonomy insertion
+ * @param ressource $result_forums The MySQL result of phpBB categories/forum
  */
-function createCategoriesCrossReference($phpbb_id, $label, $parent_id = null) {
-    global $categories_cross_reference;
+function createCategoryCrossReference($result_forums) {
+    global
+        $categories_cross_reference,
+        $insert_categories_taxonomy_data,
+        $term_taxonomy_data
+    ;
 
-    if ($parent_id == 0) {
-        // phpbb main forum > wordpress main category
-        $categories_cross_reference['main_cat'][$phpbb_id] = array(
-            'label' => $label,
-            'wp_id' => wp_create_category($label)
-        );
-    } else {
-        // phpbb forum > wordpress sub-category
-        $categories_cross_reference['sub_cat'][$phpbb_id] = array(
-            'label' => $label,
-            'wp_id' => wp_create_category($label, $categories_cross_reference['main_cat'][$parent_id]['wp_id']),
-            'wp_parent_id' => $categories_cross_reference[$parent_id]['wp_id'],
-            'phpbb_cat_id' => $parent_id
-        );
+    while ($forum_phpbb = mysql_fetch_assoc($result_forums)) {
+        $phpbb_id = $forum_phpbb['forum_id'];
+        $label = $forum_phpbb['forum_name'];
+        $parent_id = $forum_phpbb['parent_id'];
+
+
+        if ($parent_id == 0) {
+            // phpbb main forum > wordpress main category
+            $categories_cross_reference['main_cat'][$phpbb_id] = array(
+                'label' => $label,
+                'wp_id' => wp_create_category($label),
+                'term_taxonomy_id' => $term_taxonomy_id,
+            );
+
+            if (!in_array($categories_cross_reference['main_cat'][$phpbb_id]['wp_id'], $term_taxonomy_data)) {
+                // avoid duplicated wp_term_taxonomy insertion
+                $insert_categories_taxonomy_data[] = '(' . $categories_cross_reference['main_cat'][$phpbb_id]['wp_id'] . ', category, ' . $parent_id . ')';
+            }
+        } else {
+            // phpbb forum > wordpress sub-category
+            $categories_cross_reference['sub_cat'][$phpbb_id] = array(
+                'label' => $label,
+                'wp_id' => wp_create_category($label, $categories_cross_reference['main_cat'][$parent_id]['wp_id']),
+                'term_taxonomy_id' => $term_taxonomy_id,
+                'wp_parent_id' => $categories_cross_reference['main_cat'][$parent_id]['wp_id'],
+                'phpbb_cat_id' => $parent_id,
+            );
+
+            if (!in_array($categories_cross_reference['sub_cat'][$phpbb_id]['wp_id'], $term_taxonomy_data)) {
+                // avoid duplicated wp_term_taxonomy insertion
+                $insert_categories_taxonomy_data[] = '(' . $categories_cross_reference['sub_cat'][$phpbb_id]['wp_id'] . ', category, ' . $parent_id . ')';
+            }
+        }
     }
 }
 
@@ -343,6 +365,7 @@ if ($result_forums) {
 }
 
 $categories_cross_reference = array();
+$insert_categories_taxonomy_data = array();
 $posts_ids_phpbb = array();
 $posts_wp = array();
 $count_posts = 0;
@@ -350,10 +373,55 @@ $count_converted = 0;
 $count_categories = 0;
 $count_categories_created = 0;
 
+// read existing term taxonomy data
+// to avoid duplicated entry in wp_term_taxonomy (and fail post<->category link)
+$sql_term_taxonomy = 'SELECT
+    term_id
+    FROM
+    ' . $wp_prefix . 'term_taxonomy
+    ORDER BY term_taxonomy_id
+    ASC';
+$result_term_taxonomy = mysql_query($sql_term_taxonomy);
+
+if ($result_term_taxonomy) {
+    echo '<p class="notice">Reading existing term id...</p>';
+} else {
+    exit('<p class="warning">Invalid Request for posts: ' . mysql_error() . "</p>");
+}
+
+// fill an array with these data
+$term_taxonomy_data = array();
+while ($term_taxonomy = mysql_fetch_array($result_term_taxonomy)) {
+    $term_taxonomy_data[] = $term_taxonomy['term_id'];
+}
 
 /* Create categories */
-while ($forum_phpbb = mysql_fetch_assoc($result_forums)) {
-    createCategoriesCrossReference($forum_phpbb['forum_id'], $forum_phpbb['forum_name'], $forum_phpbb['parent_id']);
+createCategoryCrossReference($result_forums);
+
+/* Set categories taxonomy */
+$sql_insert_taxonomy = 'INSERT
+    INTO ' . $wp_prefix . 'term_taxonomy
+    (term_id,
+    taxonomy,
+    parent)
+    VALUES
+    ' . implode(', ', $insert_categories_taxonomy_data) . '
+';
+mysql_query($sql_insert_taxonomy);
+
+// read new term taxonomy data for uniq term_taxonomy_id
+$sql_updated_term_taxonomy = 'SELECT
+    *
+    FROM
+    ' . $wp_prefix . 'term_taxonomy
+    ORDER BY term_id
+    ASC';
+$result_updated_term_taxonomy = mysql_query($sql_updated_term_taxonomy);
+
+// fill an array with these data
+$updated_term_taxonomy_data = array();
+while ($term_taxonomy_row = mysql_fetch_array($result_updated_term_taxonomy)) {
+    $updated_term_taxonomy_data[$term_taxonomy_row['term_id']] = $term_taxonomy_row;
 }
 
 /* Define emoticons */
@@ -371,11 +439,11 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
     $cleaned_content = cleanEmoticons($cleaned_content);
 
     // Categories ids
-    $categories_ids = array(
+    $term_taxonomies_ids = array(
         // wordpress main category (phpbb category)
-        $categories_cross_reference['main_cat'][$categories_cross_reference['sub_cat'][$post_phpbb['forum_id']]['phpbb_cat_id']]['wp_id'],
+        $updated_term_taxonomy_data[$categories_cross_reference['main_cat'][$categories_cross_reference['sub_cat'][$post_phpbb['forum_id']]['phpbb_cat_id']]['wp_id']]['term_taxonomy_id'],
         // wordpress sub-category (phpbb forum)
-        $categories_cross_reference['sub_cat'][$post_phpbb['forum_id']]['wp_id']
+        $updated_term_taxonomy_data[$categories_cross_reference['sub_cat'][$post_phpbb['forum_id']]['wp_id']]['term_taxonomy_id'],
     );
 
     $posts_ids_phpbb[] = $post_phpbb['topic_id'];
@@ -430,20 +498,22 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
         // get last post id - we suppose this is the current post id
         $current_post_id = mysql_insert_id();
 
-        foreach ($categories_ids as $category_id) {
+        foreach ($term_taxonomies_ids as $term_taxonomy_id) {
+            // update post<->category relationship table
             $sql_insert_relationships = 'INSERT
             INTO ' . $wp_prefix . 'term_relationships
             (object_id,
             term_taxonomy_id)
             VALUES
             (' . $current_post_id . ',
-            ' . $category_id . ')
+            ' . $term_taxonomy_id . ')
             ';
             mysql_query($sql_insert_relationships);
 
+            // update posts in category counter
             $sql_update_cat_count = 'UPDATE ' . $wp_prefix . 'term_taxonomy
             SET count = count+1
-            WHERE term_id = ' . $category_id;
+            WHERE term_taxonomy_id = ' . $term_taxonomy_id;
             mysql_query($sql_update_cat_count);
         }
 
