@@ -354,23 +354,6 @@ $sql_forums = 'SELECT
 ';
 $result_forums = mysql_query($sql_forums);
 
-// read emoticons
-$sql_emoticons = 'SELECT
-    smiley_id,
-    code,
-    smiley_url
-    FROM
-    ' . $phpbb_prefix . 'smilies
-    ORDER BY ' . $phpbb_prefix . 'smilies.smiley_id ASC
-';
-$result_emoticons = mysql_query($sql_emoticons);
-
-$phpbb_emoticons = array();
-while ($emoticons_phpbb = mysql_fetch_assoc($result_emoticons)) {
-    // use file name as key for easy array_diff
-    $phpbb_emoticons[$emoticons_phpbb['smiley_url']] = $emoticons_phpbb['code'];
-}
-
 if ($result_posts) {
     echo '<p class="notice">Posts reading...</p>';
 } else {
@@ -444,6 +427,23 @@ while ($term_taxonomy_row = mysql_fetch_array($result_updated_term_taxonomy)) {
 }
 
 if ($keep_emoticons && $keep_custom_emoticons) {
+    // read emoticons
+    $sql_emoticons = 'SELECT
+        smiley_id,
+        code,
+        smiley_url
+        FROM
+        ' . $phpbb_prefix . 'smilies
+        ORDER BY ' . $phpbb_prefix . 'smilies.smiley_id ASC
+    ';
+    $result_emoticons = mysql_query($sql_emoticons);
+
+    $phpbb_emoticons = array();
+    while ($emoticons_phpbb = mysql_fetch_assoc($result_emoticons)) {
+        // use file name as key for easy array_diff
+        $phpbb_emoticons[$emoticons_phpbb['smiley_url']] = $emoticons_phpbb['code'];
+    }
+
     // define custom emoticons
     $phpbb_custom_emoticons = array_diff($phpbb_emoticons, $wp_basic_emoticons);
     // invert file name and emoticon's code
