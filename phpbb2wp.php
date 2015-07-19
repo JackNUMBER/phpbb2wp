@@ -438,16 +438,12 @@ if ($keep_emoticons && $keep_custom_emoticons) {
     ';
     $result_emoticons = mysql_query($sql_emoticons);
 
-    $phpbb_emoticons = array();
+    $phpbb_custom_emoticons = array();
     while ($emoticons_phpbb = mysql_fetch_assoc($result_emoticons)) {
-        // use file name as key for easy array_diff
-        $phpbb_emoticons[$emoticons_phpbb['smiley_url']] = $emoticons_phpbb['code'];
+        if (!in_array($emoticons_phpbb['code'], $wp_basic_emoticons)) {
+            $phpbb_custom_emoticons[$emoticons_phpbb['code']] = $emoticons_phpbb['smiley_url'];
+        }
     }
-
-    // define custom emoticons
-    $phpbb_custom_emoticons = array_diff($phpbb_emoticons, $wp_basic_emoticons);
-    // invert file name and emoticon's code
-    $phpbb_custom_emoticons = array_flip($phpbb_custom_emoticons);
 
     // display custom emoticons
     echo '<p>';
