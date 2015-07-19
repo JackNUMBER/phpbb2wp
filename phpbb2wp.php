@@ -32,8 +32,8 @@ $phpbb_prefix = 'phpbb_';  // your phpBB table name prefix
 $wp_user_id = 1; // your WP user id
 $phpbb_user_id = 2; // your phpBB user id
 
-$keep_emoticons = true;
-$keep_custom_emoticons = true;
+$keep_emoticons = true; // keep default emoticons (see $wp_basic_emoticons)
+$keep_custom_emoticons = false; // keep custom emoticons (different than $wp_basic_emoticons)
 
 $restrict_read_to_one_user = true; // read phpBB post of only $phpbb_user_id
 
@@ -245,41 +245,53 @@ function sanitize($string) {
 }
 
 /**
- * Manage emoticons list with user params
- * @param bool $keep_emoticons Define if we need to keep all emoticons
- * @param bool $keep_custom_emoticons Define if we need to keep phpBB customs emoticons
- * @return string
+ * Clean emoticons on post's content:
+ *   - replace <img> by emoticons code
+ *   - if needed, remove emoticons
+ * @param string $post_content Source string
+ * @return string $cleaned_string String with emoticons cleaned
  */
-function emoticonsManager($keep_emoticons, $keep_custom_emoticons) {
-    global $result_emoticons, $wp_basic_emoticons;
+function cleanEmoticons($post_content, $keep_emoticons, $keep_custom_emoticons) {
+    // phpBB3 replace emoticons code by an <img> on the DB insert
+    // Wordpress replace emoticons code by an <img> on the display
+    // so, in DB we need to stock emoticon's code instead of <img>
 
-    $phpbb_emoticons = array();
-    global $emoticoncs_to_kill;
-    $emoticoncs_to_kill = array();
+    // retrieve Wordpress default emoticons lists
+    global $wp_basic_emoticons;
 
-    while ($emoticons_phpbb = mysql_fetch_assoc($result_emoticons)) {
-        $phpbb_emoticons[] = $emoticons_phpbb['code'];
+    // the pattern of phpBB3 emoticons in post content
+    // @TODO enhance pattern for special character in emoticon's code
+    $pattern = '(<!-- s(\S*) --><img src="\S*" alt="\S*" title="[^"]+" \/><!-- s\S* -->)';
+    preg_match_all($pattern, $post_content, $matches);
+
+    $cleaned_post_content = $post_content;
+
+    // for each emoticon's match
+    for ($i = 0; $i < count($matches[1]); $i++) {
+        if ($keep_emoticons) {
+            if ($keep_custom_emoticons) {
+                // replace all emoticons by their code
+                $cleaned_post_content = str_replace($matches[0][$i], $matches[1][$i], $cleaned_post_content);
+            } else {
+                if (in_array($matches[1][$i], $wp_basic_emoticons)) {
+                    // replace only default emoticons by their code
+                    $cleaned_post_content = str_replace($matches[0][$i], $matches[1][$i], $cleaned_post_content);
+                } else {
+                    // remove custom emoticons
+                    // @TODO trim additional space
+                    $cleaned_post_content = str_replace($matches[0][$i], '', $cleaned_post_content);
+                }
+            }
+        } else {
+            // remove all emoticons
+            // @TODO trim additional space
+            $cleaned_post_content = str_replace($matches[0][$i], '', $cleaned_post_content);
+        }
     }
 
-    $phpbb_custom_emoticons = array_diff($phpbb_emoticons, $wp_basic_emoticons);
-
-    if (!$keep_emoticons) {
-        $emoticoncs_to_kill = $phpbb_emoticons;
-    } else if (!$keep_custom_emoticons) {
-        $emoticoncs_to_kill = $phpbb_custom_emoticons;
-    }
-}
-
-/**
- * Clean emoticons on a string
- * @param bool $str Source string
- * @return string $cleaned_str String with emoticons cleaned
- */
-function cleanEmoticons($str) {
-    global $emoticoncs_to_kill;
-
-    $cleaned_str = str_replace($emoticoncs_to_kill, '', $str);
-    return $cleaned_str;
+    // @TODO use $emoticoncs_to_kill list instead of multiple str_replace()
+    //       this way allow 2 str_replace(): one for the emoticons to kill and one for remaining emoticons (if $keep_emoticons == true)
+    return $cleaned_post_content;
 }
 
 /* ================================================== */
@@ -344,13 +356,20 @@ $result_forums = mysql_query($sql_forums);
 
 // read emoticons
 $sql_emoticons = 'SELECT
-    smiley_id
-    code
+    smiley_id,
+    code,
+    smiley_url
     FROM
     ' . $phpbb_prefix . 'smilies
     ORDER BY ' . $phpbb_prefix . 'smilies.smiley_id ASC
 ';
 $result_emoticons = mysql_query($sql_emoticons);
+
+$phpbb_emoticons = array();
+while ($emoticons_phpbb = mysql_fetch_assoc($result_emoticons)) {
+    // use file name as key for easy array_diff
+    $phpbb_emoticons[$emoticons_phpbb['smiley_url']] = $emoticons_phpbb['code'];
+}
 
 if ($result_posts) {
     echo '<p class="notice">Posts reading...</p>';
@@ -424,8 +443,24 @@ while ($term_taxonomy_row = mysql_fetch_array($result_updated_term_taxonomy)) {
     $updated_term_taxonomy_data[$term_taxonomy_row['term_id']] = $term_taxonomy_row;
 }
 
-/* Define emoticons */
-emoticonsManager($keep_emoticons, $keep_custom_emoticons);
+if ($keep_emoticons && $keep_custom_emoticons) {
+    // define custom emoticons
+    $phpbb_custom_emoticons = array_diff($phpbb_emoticons, $wp_basic_emoticons);
+    // invert file name and emoticon's code
+    $phpbb_custom_emoticons = array_flip($phpbb_custom_emoticons);
+
+    // display custom emoticons
+    echo '<p>';
+    echo 'Here the list of your new custom emoticons:';
+    echo '</p>';
+    echo '<textarea rows="6" cols="60">';
+
+    foreach ($phpbb_custom_emoticons as $emoticon_name => $emoticon_filename) {
+        echo $emoticon_name . ' => ' . $emoticon_filename . "\n";
+    }
+
+    echo '</textarea>';
+}
 
 /* Posts conversion */
 while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
@@ -435,8 +470,9 @@ while ($post_phpbb = mysql_fetch_assoc($result_posts)) {
     }
 
     // Clean content
+    // @TODO clean the content in one time, not in the DB insert while
     $cleaned_content = bbcode_to_html($post_phpbb['post_text'], ':' . $post_phpbb['bbcode_uid']);
-    $cleaned_content = cleanEmoticons($cleaned_content);
+    $cleaned_content = cleanEmoticons($cleaned_content, $keep_emoticons, $keep_custom_emoticons);
 
     // Categories ids
     $term_taxonomies_ids = array(
